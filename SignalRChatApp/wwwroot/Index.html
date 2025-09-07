@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-Time Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.0/signalr.min.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        #messagesList {
+            list-style: none;
+            padding: 0;
+        }
+
+            #messagesList li {
+                padding: 5px;
+                margin-bottom: 5px;
+                border-bottom: 1px solid #ccc;
+            }
+
+        #chatUI {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Chat Room</h2>
+
+    <div id="loginUI">
+        <input type="text" id="loginUser" placeholder="Username" /><br><br>
+        <input type="password" id="loginPassword" placeholder="Password" /><br><br>
+        <button onclick="login()">Login</button>
+        <p id="loginError" style="color:red;"></p>
+    </div>
+
+    <div id="chatUI">
+        <p>Logged in as <span id="loggedUser"></span></p>
+        <input type="text" id="messageInput" placeholder="Type a message" />
+        <button onclick="sendMessage()">Send</button>
+
+        <ul id="messagesList"></ul>
+    </div>
+
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("http://192.168.1.30:5010/chathub")
+            .build();
+
+        connection.on("ReceiveMessage", (user, message, time) => {
+            const li = document.createElement("li");
+            li.textContent = `${time} - ${user}: ${message}`;
+            document.getElementById("messagesList").appendChild(li);
+        });
+
+        connection.start().catch(err => console.error(err.toString()));
+
+        // Hardcoded valid credentials
+        const validUser = "Shivank";
+        const validPassword = "Shivank";
+
+        function login() {
+            const user = document.getElementById("loginUser").value.trim();
+            const pass = document.getElementById("loginPassword").value;
+
+            if (user === validUser && pass === validPassword) {
+                // Hide login UI, show chat UI
+                document.getElementById("loginUI").style.display = "none";
+                document.getElementById("chatUI").style.display = "block";
+                document.getElementById("loggedUser").textContent = user;
+                // Save logged in user to use when sending messages
+                window.loggedInUser = user;
+                document.getElementById("loginError").textContent = "";
+            } else {
+                document.getElementById("loginError").textContent = "Invalid username or password!";
+            }
+        }
+
+        function sendMessage() {
+            const message = document.getElementById("messageInput").value;
+            if (!window.loggedInUser) {
+                alert("Please login first!");
+                return;
+            }
+
+            if (message) {
+                connection.invoke("SendMessage", window.loggedInUser, message)
+                    .catch(err => console.error(err.toString()));
+                document.getElementById("messageInput").value = "";
+            }
+        }
+    </script>
+</body>
+</html>
